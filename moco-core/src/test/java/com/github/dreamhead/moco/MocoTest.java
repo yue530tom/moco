@@ -3,6 +3,7 @@ package com.github.dreamhead.moco;
 import com.google.common.io.Resources;
 import com.google.common.net.HttpHeaders;
 import org.apache.http.Header;
+import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
 import org.apache.http.ProtocolVersion;
 import org.apache.http.client.HttpResponseException;
@@ -587,6 +588,19 @@ public class MocoTest extends AbstractMocoHttpTest {
         });
     }
 
+    @Test
+    public void should_eq_multiple_header_with_same_name() throws Exception {
+        server.request(and(eq(header("foo"), "bar")), eq(header("foo"), "bar2"))
+                .response("blah");
+
+        running(server, new Runnable() {
+            @Override
+            public void run() throws IOException {
+                assertThat(helper.getWithHeader(root(), of("foo", "bar", "foo", "bar2")), is("blah"));
+            }
+        });
+    }
+
     @Test(expected = HttpResponseException.class)
     public void should_throw_exception_without_specified_header() throws Exception {
         server.request(eq(header("foo"), "bar")).response("blah");
@@ -595,6 +609,22 @@ public class MocoTest extends AbstractMocoHttpTest {
             @Override
             public void run() throws IOException {
                 helper.get(remoteUrl("/foo"));
+            }
+        });
+    }
+
+    @Test
+    public void should_set_multiple_header_with_same_name() throws Exception {
+        server.response(header("foo", "bar"), header("foo", "another"));
+
+        running(server, new Runnable() {
+            @Override
+            public void run() throws IOException {
+                HttpResponse response = helper.getResponse(root());
+                Header[] headers = response.getHeaders("foo");
+                assertThat(headers.length, is(2));
+                assertThat(headers[0].getValue(), is("bar"));
+                assertThat(headers[1].getValue(), is("another"));
             }
         });
     }
@@ -711,6 +741,21 @@ public class MocoTest extends AbstractMocoHttpTest {
                 assertThat(json, is("application/json"));
                 String bar = helper.getResponse(root()).getFirstHeader("foo").getValue();
                 assertThat(bar, is("bar"));
+            }
+        });
+    }
+
+    @Test
+    public void should_return_multiple_expected_header_with_same_name() throws Exception {
+        server.response(header("foo", "bar"), header("foo", "moco"));
+
+        running(server, new Runnable() {
+            @Override
+            public void run() throws IOException {
+                Header[] headers = helper.getResponse(root()).getHeaders("foo");
+                assertThat(headers.length, is(2));
+                assertThat(headers[0].getValue(), is("bar"));
+                assertThat(headers[1].getValue(), is("moco"));
             }
         });
     }

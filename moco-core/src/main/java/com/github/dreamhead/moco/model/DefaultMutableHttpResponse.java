@@ -5,6 +5,7 @@ import com.github.dreamhead.moco.HttpRequest;
 import com.github.dreamhead.moco.MutableHttpResponse;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.google.common.net.HttpHeaders;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -14,7 +15,7 @@ import java.util.Map;
 
 public final class DefaultMutableHttpResponse implements MutableHttpResponse {
     private HttpProtocolVersion version;
-    private Map<String, String> headers = Maps.newHashMap();
+    private Map<String, String[]> headers = Maps.newHashMap();
     private int status;
     private MessageContent content;
 
@@ -40,14 +41,53 @@ public final class DefaultMutableHttpResponse implements MutableHttpResponse {
         this.content = content;
     }
 
+    private static String[] SINGLE_VALUE_HEADERS = new String[] {
+            HttpHeaders.CONTENT_TYPE
+    };
+
     @Override
     public void addHeader(final String name, final Object value) {
-        this.headers.put(name, value.toString());
+        if (this.headers.containsKey(name) && isSingleValueHeader(name)) {
+            this.headers.remove(name);
+        }
+
+        doAddHeader(name, value);
+    }
+
+    private boolean isSingleValueHeader(final String name) {
+        for (String header : SINGLE_VALUE_HEADERS) {
+            if (header.equalsIgnoreCase(name)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void doAddHeader(final String name, final Object value) {
+        this.headers.put(name, newValues(name, value));
+    }
+
+    private String[] newValues(final String name, final Object value) {
+        if (this.headers.containsKey(name)) {
+            String[] values = this.headers.get(name);
+            String[] newValues = new String[values.length + 1];
+            System.arraycopy(values, 0, newValues, 0, values.length);
+            newValues[values.length] = value.toString();
+            return newValues;
+        }
+
+        return new String[]{value.toString()};
     }
 
     @Override
-    public void removeHeader(final String name) {
-        this.headers.remove(name);
+    public String getHeader(final String name) {
+        if (!this.headers.containsKey(name)) {
+            return null;
+        }
+
+        String[] values = this.headers.get(name);
+        return values[0];
     }
 
     @Override
@@ -56,7 +96,7 @@ public final class DefaultMutableHttpResponse implements MutableHttpResponse {
     }
 
     @Override
-    public ImmutableMap<String, String> getHeaders() {
+    public ImmutableMap<String, String[]> getHeaders() {
         return ImmutableMap.copyOf(this.headers);
     }
 
@@ -80,8 +120,12 @@ public final class DefaultMutableHttpResponse implements MutableHttpResponse {
     public FullHttpResponse toFullResponse() {
         FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.valueOf(this.version.text()),
                 HttpResponseStatus.valueOf(this.status));
-        for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
-            response.headers().add(entry.getKey(), entry.getValue());
+
+        for (Map.Entry<String, String[]> entry : getHeaders().entrySet()) {
+            String key = entry.getKey();
+            for (String value : entry.getValue()) {
+                response.headers().add(key, value);
+            }
         }
 
         if (this.content != null) {

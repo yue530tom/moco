@@ -7,6 +7,10 @@ import com.github.dreamhead.moco.model.DefaultHttpRequest;
 import com.github.dreamhead.moco.model.MessageContent;
 import com.google.common.collect.ImmutableMap;
 
+import java.util.Map;
+
+import static com.github.dreamhead.moco.util.Maps.arrayValueToSimple;
+
 public class TemplateRequest {
     private Request request;
 
@@ -26,9 +30,9 @@ public class TemplateRequest {
         throw new IllegalArgumentException("Request is not HTTP request");
     }
 
-    public ImmutableMap<String, String> getHeaders() {
+    public Map<String, String> getHeaders() {
         if (this.request instanceof HttpRequest) {
-            return ((HttpRequest) this.request).getHeaders();
+            return arrayValueToSimple(((HttpRequest) this.request).getHeaders());
         }
 
         throw new IllegalArgumentException("Request is not HTTP request");

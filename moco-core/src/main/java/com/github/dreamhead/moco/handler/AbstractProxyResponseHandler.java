@@ -114,6 +114,7 @@ public abstract class AbstractProxyResponseHandler extends AbstractHttpResponseH
         return remoteRequest;
     }
 
+    @SuppressWarnings("deprecation")
     private RequestConfig createRequestConfig() {
         return RequestConfig.custom()
                 .setRedirectsEnabled(false)
@@ -236,9 +237,13 @@ public abstract class AbstractProxyResponseHandler extends AbstractHttpResponseH
     private void doWritHttpResponse(final HttpResponse response, final MutableHttpResponse httpResponse) {
         httpResponse.setVersion(response.getVersion());
         httpResponse.setStatus(response.getStatus());
-        for (Map.Entry<String, String> entry : response.getHeaders().entrySet()) {
-            httpResponse.addHeader(entry.getKey(), entry.getValue());
+        for (Map.Entry<String, String[]> entry : response.getHeaders().entrySet()) {
+            String key = entry.getKey();
+            for (String value : entry.getValue()) {
+                httpResponse.addHeader(key, value);
+            }
         }
+
         httpResponse.setContent(response.getContent());
     }
 

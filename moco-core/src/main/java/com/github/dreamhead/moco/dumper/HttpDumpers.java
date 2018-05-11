@@ -1,9 +1,17 @@
 package com.github.dreamhead.moco.dumper;
 
 import com.github.dreamhead.moco.HttpMessage;
+import com.google.common.base.Function;
+import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Maps;
 import com.google.common.net.HttpHeaders;
 import com.google.common.net.MediaType;
 import io.netty.util.internal.StringUtil;
+
+import java.util.Map;
+
+import static com.google.common.collect.FluentIterable.from;
 
 public final class HttpDumpers {
     public static String asContent(final HttpMessage message) {
@@ -16,7 +24,7 @@ public final class HttpDumpers {
     }
 
     private static String contentForDump(final HttpMessage message) {
-        String type = message.getHeaders().get(HttpHeaders.CONTENT_TYPE);
+        String type = message.getHeader(HttpHeaders.CONTENT_TYPE);
         if (isText(type)) {
             return message.getContent().toString();
         }
@@ -39,7 +47,7 @@ public final class HttpDumpers {
     }
 
     private static long getContentLength(final HttpMessage response, final long defaultValue) {
-        String lengthText = response.getHeaders().get(HttpHeaders.CONTENT_LENGTH);
+        String lengthText = response.getHeader(HttpHeaders.CONTENT_LENGTH);
         if (lengthText != null) {
             try {
                 return Long.parseLong(lengthText);
@@ -49,6 +57,27 @@ public final class HttpDumpers {
         }
 
         return defaultValue;
+    }
+
+    private final static Joiner.MapJoiner headerJoiner = Joiner.on(StringUtil.NEWLINE).withKeyValueSeparator(": ");
+
+    public static String asHeaders(final HttpMessage message) {
+        return headerJoiner.join(from(message.getHeaders().entrySet())
+                .transformAndConcat(toMapEntries()));
+    }
+
+    private static Function<Map.Entry<String, String[]>, Iterable<Map.Entry<String, String>>> toMapEntries() {
+        return new Function<Map.Entry<String, String[]>, Iterable<Map.Entry<String, String>>>() {
+            @Override
+            public Iterable<Map.Entry<String, String>> apply(final Map.Entry<String, String[]> input) {
+                String key = input.getKey();
+                ImmutableList.Builder<Map.Entry<String, String>> builder = ImmutableList.builder();
+                for (String value : input.getValue()) {
+                    builder.add(Maps.immutableEntry(key, value));
+                }
+                return builder.build();
+            }
+        };
     }
 
     private HttpDumpers() {

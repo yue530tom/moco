@@ -40,7 +40,7 @@ public final class DefaultHttpRequest extends DefaultHttpMessage implements Http
 
     private DefaultHttpRequest(final HttpProtocolVersion version, final MessageContent content,
                                final HttpMethod method, final String uri,
-                               final ImmutableMap<String, String> headers,
+                               final ImmutableMap<String, String[]> headers,
                                final ImmutableMap<String, String[]> queries) {
         super(version, content, headers);
         this.method = method;
@@ -81,17 +81,18 @@ public final class DefaultHttpRequest extends DefaultHttpMessage implements Http
             public ImmutableMap<String, String> get() {
                 Optional<ImmutableMap<String, String>> forms =
                         new FormsRequestExtractor().extract(DefaultHttpRequest.this);
-                return toResult(forms);
+                return forms.or(emptyMapSupplier());
             }
         });
     }
 
-    private ImmutableMap<String, String> toResult(final Optional<ImmutableMap<String, String>> result) {
-        if (result.isPresent()) {
-            return result.get();
-        }
-
-        return ImmutableMap.of();
+    private Supplier<ImmutableMap<String, String>> emptyMapSupplier() {
+        return new Supplier<ImmutableMap<String, String>>() {
+            @Override
+            public ImmutableMap<String, String> get() {
+                return ImmutableMap.of();
+            }
+        };
     }
 
     private Supplier<ImmutableMap<String, String>> cookieSupplier() {
@@ -100,7 +101,7 @@ public final class DefaultHttpRequest extends DefaultHttpMessage implements Http
             public ImmutableMap<String, String> get() {
                 Optional<ImmutableMap<String, String>> cookies =
                         new CookiesRequestExtractor().extract(DefaultHttpRequest.this);
-                return toResult(cookies);
+                return cookies.or(emptyMapSupplier());
             }
         });
     }
@@ -140,7 +141,7 @@ public final class DefaultHttpRequest extends DefaultHttpMessage implements Http
 
         return builder()
                 .withVersion(HttpProtocolVersion.versionOf(request.protocolVersion().text()))
-                .withHeaders(collectHeaders(request.headers()))
+                .withHeaders(toHeaders(request))
                 .withMethod(HttpMethod.valueOf(request.method().toString().toUpperCase()))
                 .withUri(decoder.path())
                 .withQueries(queries)
@@ -174,52 +175,21 @@ public final class DefaultHttpRequest extends DefaultHttpMessage implements Http
 
         FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.valueOf(getVersion().text()),
                 io.netty.handler.codec.http.HttpMethod.valueOf(method.name()), encoder.toString(), buffer);
-        for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
-            request.headers().add(entry.getKey(), entry.getValue());
+
+        for (Map.Entry<String, String[]> entry : getHeaders().entrySet()) {
+            String key = entry.getKey();
+            for (String value : entry.getValue()) {
+                request.headers().add(key, value);
+            }
         }
 
         return request;
     }
 
-    private static ImmutableMap<String, String> collectHeaders(final Iterable<Map.Entry<String, String>> httpHeaders) {
-        ImmutableMap.Builder<String, String> headerBuilder = ImmutableMap.builder();
-        for (Map.Entry<String, String> entry : httpHeaders) {
-            headerBuilder.put(entry);
-        }
-
-        return headerBuilder.build();
-    }
-
-    public static final class Builder {
-        private HttpProtocolVersion version;
-        private MessageContent content;
-        private ImmutableMap<String, String> headers;
+    public static final class Builder extends DefaultHttpMessage.Builder<Builder> {
         private HttpMethod method;
         private String uri;
         private ImmutableMap<String, String[]> queries;
-
-        public Builder withVersion(final HttpProtocolVersion version) {
-            this.version = version;
-            return this;
-        }
-
-        public Builder withTextContent(final String content) {
-            this.content = content(content);
-            return this;
-        }
-
-        public Builder withContent(final MessageContent content) {
-            this.content = content;
-            return this;
-        }
-
-        public Builder withHeaders(final Map<String, String> headers) {
-            if (headers != null) {
-                this.headers = copyOf(headers);
-            }
-
-            return this;
-        }
 
         public Builder withMethod(final HttpMethod method) {
             this.method = method;
@@ -240,7 +210,7 @@ public final class DefaultHttpRequest extends DefaultHttpMessage implements Http
         }
 
         public DefaultHttpRequest build() {
-            return new DefaultHttpRequest(version, content, method, this.uri, headers, this.queries);
+            return new DefaultHttpRequest(this.getVersion(), this.getContent(), method, this.uri, this.getHeaders(), this.queries);
         }
     }
 }

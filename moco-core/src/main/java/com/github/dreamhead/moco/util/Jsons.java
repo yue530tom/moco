@@ -10,12 +10,14 @@ import com.github.dreamhead.moco.MocoException;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
+import com.google.common.io.CharStreams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Map;
 
@@ -52,14 +54,6 @@ public final class Jsons {
         }
     }
 
-    public static <T> T toObject(final String value, final Class<T> clazz) {
-        try {
-            return mapper.readValue(value, clazz);
-        } catch (IOException e) {
-            throw new MocoException(e);
-        }
-    }
-
     public static <T> ImmutableList<T> toObjects(final String value, final Class<T> elementClass) {
         return toObjects(new ByteArrayInputStream(value.getBytes()), elementClass);
     }
@@ -78,7 +72,8 @@ public final class Jsons {
             @Override
             public Iterable<T> apply(final InputStream input) {
                 try (InputStream actual = input) {
-                    return mapper.readValue(actual, type);
+                    String text = CharStreams.toString(new InputStreamReader(actual));
+                    return mapper.readValue(text, type);
                 } catch (UnrecognizedPropertyException e) {
                     logger.info("Unrecognized field: {}", e.getMessage());
                     throw new MocoException(format("Unrecognized field [ %s ], please check!", e.getPropertyName()));

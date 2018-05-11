@@ -233,7 +233,7 @@ public class MocoProxyTest extends AbstractMocoHttpTest {
 
     @Test
     public void should_failover_with_same_response_once() throws Exception {
-        server = httpServer(port(), log());
+        server = httpServer(port());
         server.post(and(by(uri("/target")), by("proxy"))).response("0XCAFEBABE");
         final File tempFile = tempFolder.newFile();
         server.request(by(uri("/proxy"))).response(proxy(remoteUrl("/target"), failover(tempFile.getAbsolutePath())));
@@ -421,7 +421,9 @@ public class MocoProxyTest extends AbstractMocoHttpTest {
             @Override
             public void run() throws Exception {
                 assertThat(helper.get(remoteUrl("/proxy_playback")), is("proxy"));
+                System.out.println("First request");
                 assertThat(helper.get(remoteUrl("/proxy_playback")), is("proxy"));
+                System.out.println("Second request");
             }
         });
 
@@ -443,20 +445,20 @@ public class MocoProxyTest extends AbstractMocoHttpTest {
         });
     }
 
-    @Test
-    public void should_work_well_for_chunk_response() throws Exception {
-        final File file = tempFolder.newFile();
-        HttpServer server = httpServer(12306, context("/"));
-        server.get(match(uri("/repos/.*")))
-                .response(proxy(from("/repos").to("https://api.github.com/repos"), playback(file.getAbsolutePath())));
-        running(server, new Runnable() {
-            @Override
-            public void run() throws Exception {
-                String result = helper.get("http://localhost:12306/repos/HipByte/RubyMotion/contributors");
-                assertThat(result.isEmpty(), is(false));
-            }
-        });
-    }
+//    @Test
+//    public void should_work_well_for_chunk_response() throws Exception {
+//        final File file = tempFolder.newFile();
+//        HttpServer server = httpServer(12306, context("/"));
+//        server.get(match(uri("/repos/.*")))
+//                .response(proxy(from("/repos").to("https://api.github.com/repos"), playback(file.getAbsolutePath())));
+//        running(server, new Runnable() {
+//            @Override
+//            public void run() throws Exception {
+//                String result = helper.get("http://localhost:12306/repos/HipByte/RubyMotion/contributors");
+//                assertThat(result.isEmpty(), is(false));
+//            }
+//        });
+//    }
 
     @Test
     public void should_work_with_file_resource_url() throws Exception {
