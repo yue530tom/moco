@@ -1,5 +1,6 @@
 package com.github.dreamhead.moco;
 
+import com.google.common.base.Splitter;
 import org.apache.http.Header;
 import org.apache.http.HttpVersion;
 import org.apache.http.ProtocolVersion;
@@ -8,10 +9,15 @@ import org.apache.http.message.BasicNameValuePair;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import static com.github.dreamhead.moco.helper.RemoteTestUtils.remoteUrl;
 import static com.github.dreamhead.moco.helper.RemoteTestUtils.root;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertThat;
 
 public class MocoTemplateStandaloneTest extends AbstractMocoStandaloneTest {
@@ -92,5 +98,57 @@ public class MocoTemplateStandaloneTest extends AbstractMocoStandaloneTest {
     public void should_return_file_with_template_name() throws IOException {
         runWithConfiguration("response_with_template_name.json");
         assertThat(helper.get(root()), is("foo.response"));
+    }
+
+    @Test
+    public void should_return_json_field_from_template() throws IOException {
+        runWithConfiguration("template.json");
+        String content = helper.postContent(remoteUrl("/json_template"), "{\"foo\":\"bar\"}");
+        assertThat(content, is("bar"));
+    }
+
+    @Test
+    public void should_return_now_from_template() throws IOException {
+        runWithConfiguration("template_with_function.json");
+        Date date = new Date();
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        assertThat(helper.get(remoteUrl("/now_template")), is(format.format(date)));
+    }
+
+    @Test
+    public void should_return_random_with_range_and_format_from_template() throws IOException {
+        runWithConfiguration("template_with_function.json");
+        String response = helper.get(remoteUrl("/random_template_with_range_and_format"));
+        double result = Double.parseDouble(response);
+        assertThat(result, lessThan(100d));
+        assertThat(result, greaterThan(0d));
+        String target = Splitter.on('.').splitToList(response).get(1);
+        assertThat(target.length(), lessThanOrEqualTo(6));
+    }
+
+    @Test
+    public void should_return_random_with_range_from_template() throws IOException {
+        runWithConfiguration("template_with_function.json");
+        String response = helper.get(remoteUrl("/random_template_with_range"));
+        double result = Double.parseDouble(response);
+        assertThat(result, lessThan(100d));
+        assertThat(result, greaterThan(0d));
+    }
+
+    @Test
+    public void should_return_random_with_format_from_template() throws IOException {
+        runWithConfiguration("template_with_function.json");
+        String response = helper.get(remoteUrl("/random_template_with_format"));
+        String target = Splitter.on('.').splitToList(response).get(1);
+        assertThat(target.length(), lessThanOrEqualTo(6));
+    }
+
+    @Test
+    public void should_return_random_without_arg_from_template() throws IOException {
+        runWithConfiguration("template_with_function.json");
+        String response = helper.get(remoteUrl("/random_template_without_arg"));
+        double result = Double.parseDouble(response);
+        assertThat(result, lessThan(1d));
+        assertThat(result, greaterThan(0d));
     }
 }

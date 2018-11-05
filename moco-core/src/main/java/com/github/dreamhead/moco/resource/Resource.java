@@ -20,21 +20,21 @@ public class Resource implements Identifiable, ConfigApplier<Resource>, Resource
     }
 
     @Override
-    public Resource apply(final MocoConfig config) {
+    public final Resource apply(final MocoConfig config) {
         return configApplier.apply(config, this);
     }
 
     @Override
-    public String id() {
+    public final String id() {
         return identifiable.id();
     }
 
     @Override
-    public MessageContent readFor(final Optional<? extends Request> request) {
+    public final MessageContent readFor(final Optional<? extends Request> request) {
         return reader.readFor(request);
     }
 
-    public <T extends ResourceReader> T reader(final Class<T> clazz) {
+    public final <T extends ResourceReader> T reader(final Class<T> clazz) {
         return clazz.cast(reader);
     }
 }

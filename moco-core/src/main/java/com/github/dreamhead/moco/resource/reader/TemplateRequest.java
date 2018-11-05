@@ -5,13 +5,14 @@ import com.github.dreamhead.moco.HttpRequest;
 import com.github.dreamhead.moco.Request;
 import com.github.dreamhead.moco.model.DefaultHttpRequest;
 import com.github.dreamhead.moco.model.MessageContent;
+import com.github.dreamhead.moco.util.Jsons;
 import com.google.common.collect.ImmutableMap;
 
 import java.util.Map;
 
 import static com.github.dreamhead.moco.util.Maps.arrayValueToSimple;
 
-public class TemplateRequest {
+public final class TemplateRequest {
     private Request request;
 
     public TemplateRequest(final Request request) {
@@ -83,5 +84,13 @@ public class TemplateRequest {
         }
 
         throw new IllegalArgumentException("Request is not HTTP request");
+    }
+
+    public Object getJson() {
+        try {
+            return Jsons.toObject(this.request.getContent().toString(), Object.class);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Json content is expected", e);
+        }
     }
 }

@@ -1,9 +1,11 @@
 package com.github.dreamhead.moco;
 
+import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Resources;
 import org.apache.http.Header;
+import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
 import org.apache.http.ProtocolVersion;
 import org.apache.http.client.HttpResponseException;
@@ -16,15 +18,34 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
-import static com.github.dreamhead.moco.Moco.*;
+import static com.github.dreamhead.moco.Moco.and;
+import static com.github.dreamhead.moco.Moco.by;
+import static com.github.dreamhead.moco.Moco.cookie;
+import static com.github.dreamhead.moco.Moco.eq;
+import static com.github.dreamhead.moco.Moco.file;
+import static com.github.dreamhead.moco.Moco.header;
+import static com.github.dreamhead.moco.Moco.jsonPath;
+import static com.github.dreamhead.moco.Moco.pathResource;
+import static com.github.dreamhead.moco.Moco.status;
+import static com.github.dreamhead.moco.Moco.template;
+import static com.github.dreamhead.moco.Moco.uri;
+import static com.github.dreamhead.moco.Moco.var;
+import static com.github.dreamhead.moco.Moco.version;
+import static com.github.dreamhead.moco.Moco.xpath;
 import static com.github.dreamhead.moco.Runner.running;
 import static com.github.dreamhead.moco.helper.RemoteTestUtils.remoteUrl;
 import static com.github.dreamhead.moco.helper.RemoteTestUtils.root;
 import static com.google.common.collect.ImmutableMap.of;
 import static com.google.common.io.Files.toByteArray;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 public class MocoTemplateTest extends AbstractMocoHttpTest {
     @Test
@@ -408,5 +429,153 @@ public class MocoTemplateTest extends AbstractMocoHttpTest {
                 assertThat(helper.get(remoteUrl("/anything")), is("foo"));
             }
         });
+    }
+
+    @Test
+    public void should_generate_response_with_now() throws Exception {
+        server.request(by(uri("/template"))).response(template("${now('yyyy-MM-dd')}"));
+
+        running(server, new Runnable() {
+            @Override
+            public void run() throws Exception {
+                Date date = new Date();
+                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+                assertThat(helper.get(remoteUrl("/template")), is(format.format(date)));
+            }
+        });
+    }
+
+    @Test
+    public void should_throw_exception_for_now_without_format() throws Exception {
+        server.request(by(uri("/template"))).response(template("${now()}"));
+
+        running(server, new Runnable() {
+            @Override
+            public void run() throws Exception {
+                HttpResponse response = helper.getResponse(remoteUrl("/template"));
+                assertThat(response.getStatusLine().getStatusCode(), is(400));
+            }
+        });
+    }
+
+    @Test
+    public void should_generate_response_with_random() throws Exception {
+        server.request(by(uri("/random"))).response(template("${random()}"));
+
+        running(server, new Runnable() {
+            @Override
+            public void run() throws Exception {
+                String response = helper.get(remoteUrl("/random"));
+                try {
+                    double result = Double.parseDouble(response);
+                    assertThat(result, greaterThan(0d));
+                    assertThat(result, lessThan(1d));
+                } catch (NumberFormatException e) {
+                    fail();
+                }
+            }
+        });
+    }
+
+    @Test
+    public void should_generate_response_with_random_with_range() throws Exception {
+        server.request(by(uri("/random"))).response(template("${random(100)}"));
+
+        running(server, new Runnable() {
+            @Override
+            public void run() throws Exception {
+                String response = helper.get(remoteUrl("/random"));
+                try {
+                    double result = Double.parseDouble(response);
+                    assertThat(result, lessThan(100d));
+                    assertThat(result, greaterThan(0d));
+                } catch (NumberFormatException e) {
+                    fail();
+                }
+            }
+        });
+    }
+
+    @Test
+    public void should_generate_response_with_random_with_data_format() throws Exception {
+        server.request(by(uri("/random"))).response(template("${random('###.######')}"));
+
+        running(server, new Runnable() {
+            @Override
+            public void run() throws Exception {
+                String response = helper.get(remoteUrl("/random"));
+                try {
+                    String target = Splitter.on('.').splitToList(response).get(1);
+                    assertThat(target.length(), is(6));
+
+                    double result = Double.parseDouble(response);
+                    assertThat(result, lessThan(1d));
+                } catch (NumberFormatException e) {
+                    fail();
+                }
+            }
+        });
+    }
+
+    @Test
+    public void should_generate_response_with_random_with_range_and_data_format() throws Exception {
+        server.request(by(uri("/random"))).response(template("${random(100, '###.######')}"));
+
+        running(server, new Runnable() {
+            @Override
+            public void run() throws Exception {
+                String response = helper.get(remoteUrl("/random"));
+                try {
+                    double result = Double.parseDouble(response);
+                    assertThat(result, lessThan(100d));
+                    assertThat(result, greaterThan(0d));
+                    String target = Splitter.on('.').splitToList(response).get(1);
+                    assertThat(target.length(), lessThanOrEqualTo(6));
+                } catch (NumberFormatException e) {
+                    fail();
+                }
+            }
+        });
+    }
+
+    @Test
+    public void should_throw_exception_for_random_with_range_less_than_0() throws Exception {
+        server.request(by(uri("/template"))).response(template("${random(-10)}"));
+
+        running(server, new Runnable() {
+            @Override
+            public void run() throws Exception {
+                HttpResponse response = helper.getResponse(remoteUrl("/template"));
+                assertThat(response.getStatusLine().getStatusCode(), is(400));
+            }
+        });
+    }
+
+    @Test
+    public void should_return_json() throws Exception {
+        server.request(by(uri("/template"))).response(template("${req.json.code} ${req.json.message}"));
+        running(server, new Runnable() {
+            @Override
+            public void run() throws IOException {
+                assertThat(helper.postContent(remoteUrl("/template"), "{\n\t\"code\":1,\n\t\"message\":\"message\"\n}"), is("1 message"));
+            }
+        });
+    }
+
+    @Test
+    public void should_throw_exception_for_unknown_json() throws Exception {
+        server.request(by(uri("/template"))).response(template("${req.json.code} ${req.json.message}"));
+        running(server, new Runnable() {
+            @Override
+            public void run() throws IOException {
+                HttpResponse response = helper.getResponse(remoteUrl("/template"));
+                assertThat(response.getStatusLine().getStatusCode(), is(400));
+            }
+        });
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void should_throw_exception_for_reserved_name_as_variable_nem() {
+        server.request(by(uri("/template"))).response(template("${random}", "random", "bar"));
     }
 }

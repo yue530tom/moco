@@ -46,6 +46,14 @@ public final class Jsons {
         }
     }
 
+    public static <T> T toObject(final String value, final Class<T> clazz) {
+        try {
+            return mapper.readValue(value, clazz);
+        } catch (IOException e) {
+            throw new MocoException(e);
+        }
+    }
+
     public static <T> T toObject(final InputStream value, final Class<T> clazz) {
         try {
             return mapper.readValue(value, clazz);

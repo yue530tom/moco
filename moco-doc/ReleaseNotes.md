@@ -2,6 +2,9 @@
 
 ## APIs
 * `cycle` API returns response as a cycle.
+* `now` as template function is supported in template
+* `random` as template function is supported in template
+* `req.json` is supported in template
 
 ## Implementation Details
 * Support multiple HTTP headers with same name

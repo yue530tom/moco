@@ -27,7 +27,7 @@ public class Dynamics {
             .put("forms", "form")
             .build();
 
-    protected Predicate<Field> isClassField() {
+    protected final Predicate<Field> isClassField() {
         return new Predicate<Field>() {
             @Override
             public boolean apply(final Field field) {
@@ -36,7 +36,7 @@ public class Dynamics {
         };
     }
 
-    protected Predicate<Field> isFinalField() {
+    protected final Predicate<Field> isFinalField() {
         return new Predicate<Field>() {
             @Override
             public boolean apply(final Field field) {
@@ -45,7 +45,7 @@ public class Dynamics {
         };
     }
 
-    protected <T> Predicate<Field> fieldExist(final T target) {
+    protected final <T> Predicate<Field> fieldExist(final T target) {
         return new Predicate<Field>() {
             @Override
             public boolean apply(final Field field) {
@@ -58,7 +58,7 @@ public class Dynamics {
         };
     }
 
-    protected Iterable<Field> getFields(final Class<?> clazz) {
+    protected final Iterable<Field> getFields(final Class<?> clazz) {
         ImmutableList<Field> fieldsForCurrent = getFieldsForCurrent(clazz);
         if (clazz.getSuperclass() == null) {
             return fieldsForCurrent;
@@ -76,7 +76,7 @@ public class Dynamics {
         return copyOf(fields);
     }
 
-    protected <T> Predicate<Field> isValidField(final T target) {
+    protected final <T> Predicate<Field> isValidField(final T target) {
         return and(not(or(isClassField(), isFinalField())), fieldExist(target));
     }
 
